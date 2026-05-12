@@ -20,16 +20,15 @@
 <div class="card">
     <h2 style="text-align: center; margin-top: 0;">終極解鎖器</h2>
     <label>營區名稱</label>
-    <input type="text" id="campName" value="左營01">
+    <input type="text" id="campName" value="" placeholder="例如：左營01">
     
     <label>密碼提示</label>
-    <input type="text" id="hintInput" value="T5s3f5">
+    <input type="text" id="hintInput" value="" placeholder="請輸入 6 位提示碼">
     
     <button onclick="runCalc()">產生解鎖碼</button>
 
     <div class="result">拯救你的解鎖密碼：<br><span id="uPass">請點擊產生...</span></div>
     <div class="result">安卓解除安裝密碼：<br><span id="iPass">請點擊產生...</span></div>
-    <div class="result" style="font-size: 14px; background: #f9f9f9;">備用解鎖：<span id="uPassAlt" style="font-size: 18px; color: #555;">請點擊產生...</span></div>
     <div id="errorMsg"></div>
 </div>
 
@@ -39,7 +38,6 @@
     const UNLOCK_SUFFIX = 'wdQ31H';
     const UNINSTALL_SUFFIX = 'Un5fp7';
 
-    // 1. 純 JS 數字版 Base62 反向解碼器 (安全移除 BigInt)
     function decodeBase62(s) {
         let result = 0;
         let base = CODEBOOK.length;
@@ -49,7 +47,6 @@
         return result;
     }
 
-    // 2. 位元組轉換工具 (DataView 原生支援 Signed 32-bit 截斷)
     function int_to_bytes(n) {
         const arr = new Uint8Array(4);
         const view = new DataView(arr.buffer);
@@ -62,7 +59,6 @@
         return view.getInt32(0, false);
     }
 
-    // 3. 主力演算法：compute_password
     function compute_password(site, hint) {
         const n4 = decodeBase62(hint);
         const n5 = decodeBase62(STATIC_KEY);
@@ -74,7 +70,6 @@
         
         for (let i = 0; i < site.length; i++) {
             let n7 = bytes_to_int(by5);
-            // Math.imul 確保 JS 能執行精確的 32-bit 整數乘法
             let mul = Math.imul(site.charCodeAt(i), n7);
             by5 = int_to_bytes(mul);
         }
@@ -90,38 +85,10 @@
         
         let n = bytes_to_int(by6);
         n = Math.abs(n) % 1000000;
-        return n.toString();
-    }
-
-    // 4. 備用演算法：unlock_password_compute
-    function unlock_password_compute(site, hint) {
-        const n3 = decodeBase62(hint);
-        const n4 = decodeBase62(STATIC_KEY);
-        
-        let by1 = int_to_bytes(n3);
-        let by2 = int_to_bytes(n4);
-        let by3 = new Uint8Array(4);
-        let by4 = int_to_bytes(1);
-        
-        for (let i = 0; i < site.length; i++) {
-            let n7 = bytes_to_int(by4);
-            let mul = Math.imul(site.charCodeAt(i), n7);
-            by4 = int_to_bytes(mul);
-        }
-        
-        for (let i = 0; i < 4; i++) by2[i] = by4[i] ^ by2[i];
-        for (let i = 0; i < 2; i++) by3[i] = by1[i+2] ^ by2[i+2];
-        for (let i = 2; i < 4; i++) by3[i] = by1[i-2] ^ by2[i-2];
-        
-        let n6 = bytes_to_int(by3);
-        n6 = Math.abs(n6) % 1000000;
-        n6 = Math.floor(n6 / 10);
-        n6 = n6 * 7 + 888;
-        return Math.abs(n6).toString();
+        return n.toString().padStart(6, '0'); // 強制補零湊足 6 位
     }
 
     function runCalc() {
-        // 每次計算前清除錯誤訊息
         document.getElementById('errorMsg').innerText = "";
         
         try {
@@ -135,11 +102,9 @@
 
             document.getElementById('uPass').innerText = compute_password(unlockText, hint);
             document.getElementById('iPass').innerText = compute_password(uninstallText, hint);
-            document.getElementById('uPassAlt').innerText = unlock_password_compute(unlockText, hint);
 
         } catch (err) {
             console.error("運算錯誤:", err);
-            // 將錯誤直接印在畫面上
             document.getElementById('errorMsg').innerText = "系統錯誤: " + err.message;
             document.getElementById('uPass').innerText = "運算失敗";
             document.getElementById('iPass').innerText = "運算失敗";
